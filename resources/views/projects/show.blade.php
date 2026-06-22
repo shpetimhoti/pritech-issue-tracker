@@ -23,6 +23,9 @@
         </div>
 
         <div class="flex gap-2">
+            <a href="{{ route('issues.create', ['project' => $project->id]) }}" class="inline-flex items-center justify-center rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-700">
+                New issue
+            </a>
             <a href="{{ route('projects.edit', $project) }}" class="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50">
                 Edit
             </a>
@@ -54,7 +57,7 @@
     <section>
         <div class="mb-4 flex items-center justify-between">
             <h2 class="text-xl font-semibold tracking-tight text-slate-950">Issues</h2>
-            <span class="text-sm text-slate-500">Issue management comes later</span>
+            <a href="{{ route('issues.create', ['project' => $project->id]) }}" class="text-sm font-medium text-sky-700 hover:text-sky-800">New issue</a>
         </div>
 
         @if ($project->issues->isEmpty())
@@ -77,7 +80,9 @@
                         <tbody class="divide-y divide-slate-200">
                             @foreach ($project->issues as $issue)
                                 <tr>
-                                    <td class="max-w-md px-4 py-4 text-sm font-medium text-slate-950">{{ $issue->title }}</td>
+                                    <td class="max-w-md px-4 py-4 text-sm font-medium">
+                                        <a href="{{ route('issues.show', $issue) }}" class="text-slate-950 hover:text-sky-700">{{ $issue->title }}</a>
+                                    </td>
                                     <td class="whitespace-nowrap px-4 py-4">
                                         <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-medium {{ $statusClasses[$issue->status] ?? 'bg-slate-100 text-slate-700' }}">
                                             {{ Str::headline($issue->status) }}

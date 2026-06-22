@@ -16,9 +16,12 @@
                     Trackly
                 </a>
 
-                <nav aria-label="Main navigation">
+                <nav class="flex items-center gap-1" aria-label="Main navigation">
                     <a href="{{ route('projects.index') }}" class="rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-950">
                         Projects
+                    </a>
+                    <a href="{{ route('issues.index') }}" class="rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-950">
+                        Issues
                     </a>
                 </nav>
             </div>
