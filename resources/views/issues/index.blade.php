@@ -1,26 +1,6 @@
 @extends('layouts.app')
 
 @section('content')
-    @php
-        $statusClasses = [
-            'open' => 'bg-sky-50 text-sky-700',
-            'in_progress' => 'bg-amber-50 text-amber-700',
-            'closed' => 'bg-emerald-50 text-emerald-700',
-        ];
-
-        $priorityClasses = [
-            'low' => 'bg-slate-100 text-slate-700',
-            'medium' => 'bg-violet-50 text-violet-700',
-            'high' => 'bg-red-50 text-red-700',
-        ];
-
-        $activeFilters = collect([
-            'Status' => isset($filters['status']) ? Str::headline($filters['status']) : null,
-            'Priority' => isset($filters['priority']) ? Str::headline($filters['priority']) : null,
-            'Tag' => isset($filters['tag']) ? optional($tags->firstWhere('id', (int) $filters['tag']))->name : null,
-        ])->filter();
-    @endphp
-
     <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h1 class="text-3xl font-semibold tracking-tight text-slate-950">Issues</h1>
@@ -32,11 +12,34 @@
         </a>
     </div>
 
-    <form action="{{ route('issues.index') }}" method="GET" class="mb-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <div class="grid gap-4 md:grid-cols-4">
+    <form action="{{ route('issues.index') }}" method="GET" class="mb-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm" data-issue-search-form>
+        <div class="grid gap-4 md:grid-cols-5">
+            <div class="md:col-span-2">
+                <label for="search" class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Search</label>
+                <div class="mt-2 flex rounded-md border border-slate-300 bg-white shadow-sm focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-200">
+                    <input
+                        id="search"
+                        name="search"
+                        type="search"
+                        value="{{ $filters['search'] ?? '' }}"
+                        placeholder="Search issues..."
+                        class="block w-full rounded-l-md border-0 bg-transparent px-3 py-2 text-sm outline-none"
+                        data-issue-search-input
+                    >
+                    <button
+                        type="button"
+                        class="{{ empty($filters['search']) ? 'hidden' : '' }} px-3 text-sm font-medium text-slate-500 hover:text-slate-900"
+                        data-clear-issue-search
+                        aria-label="Clear issue search"
+                    >
+                        Clear
+                    </button>
+                </div>
+            </div>
+
             <div>
                 <label for="status" class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Status</label>
-                <select id="status" name="status" class="mt-2 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm">
+                <select id="status" name="status" class="mt-2 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm" data-issue-filter>
                     <option value="">All statuses</option>
                     @foreach (App\Models\Issue::STATUSES as $status)
                         <option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ Str::headline($status) }}</option>
@@ -46,7 +49,7 @@
 
             <div>
                 <label for="priority" class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Priority</label>
-                <select id="priority" name="priority" class="mt-2 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm">
+                <select id="priority" name="priority" class="mt-2 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm" data-issue-filter>
                     <option value="">All priorities</option>
                     @foreach (App\Models\Issue::PRIORITIES as $priority)
                         <option value="{{ $priority }}" @selected(($filters['priority'] ?? '') === $priority)>{{ Str::headline($priority) }}</option>
@@ -56,94 +59,192 @@
 
             <div>
                 <label for="tag" class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Tag</label>
-                <select id="tag" name="tag" class="mt-2 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm">
+                <select id="tag" name="tag" class="mt-2 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm" data-issue-filter>
                     <option value="">All tags</option>
                     @foreach ($tags as $tag)
                         <option value="{{ $tag->id }}" @selected((int) ($filters['tag'] ?? 0) === $tag->id)>{{ $tag->name }}</option>
                     @endforeach
                 </select>
             </div>
+        </div>
 
-            <div class="flex items-end gap-2">
-                <button type="submit" class="inline-flex w-full justify-center rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-700">
+        <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex items-center gap-3">
+                <p class="hidden text-sm text-slate-600" data-issue-search-loading>Searching...</p>
+                <p class="hidden text-sm text-red-600" data-issue-search-error></p>
+            </div>
+
+            <div class="flex gap-2">
+                <button type="submit" class="inline-flex justify-center rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-700">
                     Apply filters
                 </button>
-                <a href="{{ route('issues.index') }}" class="inline-flex justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50">
+                <a href="{{ route('issues.index') }}" class="inline-flex justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50" data-clear-all-issue-filters>
                     Clear
                 </a>
             </div>
         </div>
     </form>
 
-    @if ($activeFilters->isNotEmpty())
-        <div class="mb-4 flex flex-wrap gap-2 text-sm text-slate-600">
-            <span class="font-medium text-slate-800">Active filters:</span>
-            @foreach ($activeFilters as $label => $value)
-                <span class="rounded-full bg-slate-100 px-2.5 py-1">{{ $label }}: {{ $value }}</span>
-            @endforeach
-        </div>
-    @endif
-
-    @if ($issues->isEmpty())
-        <div class="rounded-lg border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
-            <h2 class="text-lg font-semibold text-slate-950">No issues found</h2>
-            <p class="mt-2 text-sm text-slate-600">Create a new issue or clear the filters to see more results.</p>
-            <a href="{{ route('issues.create') }}" class="mt-6 inline-flex items-center justify-center rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-700">
-                New issue
-            </a>
-        </div>
-    @else
-        <div class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-slate-200">
-                    <thead class="bg-slate-50">
-                        <tr>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Issue</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Project</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Priority</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Due date</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Tags</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-200">
-                        @foreach ($issues as $issue)
-                            <tr>
-                                <td class="max-w-md px-4 py-4">
-                                    <a href="{{ route('issues.show', $issue) }}" class="text-sm font-semibold text-slate-950 hover:text-sky-700">{{ $issue->title }}</a>
-                                </td>
-                                <td class="whitespace-nowrap px-4 py-4 text-sm text-slate-700">
-                                    <a href="{{ route('projects.show', $issue->project) }}" class="hover:text-sky-700">{{ $issue->project->name }}</a>
-                                </td>
-                                <td class="whitespace-nowrap px-4 py-4">
-                                    <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-medium {{ $statusClasses[$issue->status] ?? 'bg-slate-100 text-slate-700' }}">
-                                        {{ Str::headline($issue->status) }}
-                                    </span>
-                                </td>
-                                <td class="whitespace-nowrap px-4 py-4">
-                                    <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-medium {{ $priorityClasses[$issue->priority] ?? 'bg-slate-100 text-slate-700' }}">
-                                        {{ Str::headline($issue->priority) }}
-                                    </span>
-                                </td>
-                                <td class="whitespace-nowrap px-4 py-4 text-sm text-slate-700">{{ $issue->due_date?->format('M j, Y') ?? 'No due date' }}</td>
-                                <td class="px-4 py-4">
-                                    <div class="flex max-w-xs flex-wrap gap-1.5">
-                                        @forelse ($issue->tags as $tag)
-                                            <span class="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">{{ $tag->name }}</span>
-                                        @empty
-                                            <span class="text-sm text-slate-500">No tags</span>
-                                        @endforelse
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="mt-6">
-            {{ $issues->links() }}
-        </div>
-    @endif
+    <div data-issue-results>
+        @include('issues._results', ['issues' => $issues, 'tags' => $tags, 'filters' => $filters])
+    </div>
 @endsection
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.querySelector('[data-issue-search-form]');
+
+            if (!form) {
+                return;
+            }
+
+            const searchInput = form.querySelector('[data-issue-search-input]');
+            const clearSearchButton = form.querySelector('[data-clear-issue-search]');
+            const clearAllLink = form.querySelector('[data-clear-all-issue-filters]');
+            const loading = form.querySelector('[data-issue-search-loading]');
+            const error = form.querySelector('[data-issue-search-error]');
+            const results = document.querySelector('[data-issue-results]');
+            let debounceTimer = null;
+            let controller = null;
+
+            const setLoading = (isLoading) => {
+                loading.classList.toggle('hidden', !isLoading);
+            };
+
+            const setError = (message = '') => {
+                error.textContent = message;
+                error.classList.toggle('hidden', message === '');
+            };
+
+            const toggleClearSearch = () => {
+                clearSearchButton.classList.toggle('hidden', searchInput.value.trim() === '');
+            };
+
+            const buildUrl = (url = form.action) => {
+                const target = new URL(url, window.location.origin);
+                const formData = new FormData(form);
+                const page = target.searchParams.get('page');
+
+                target.search = '';
+
+                if (page) {
+                    target.searchParams.set('page', page);
+                }
+
+                formData.forEach((value, key) => {
+                    const trimmed = String(value).trim();
+
+                    if (trimmed !== '') {
+                        target.searchParams.set(key, trimmed);
+                    }
+                });
+
+                return target;
+            };
+
+            const syncFormFromUrl = (url) => {
+                const target = new URL(url, window.location.origin);
+
+                ['search', 'status', 'priority', 'tag'].forEach((field) => {
+                    const input = form.elements[field];
+
+                    if (input) {
+                        input.value = target.searchParams.get(field) || '';
+                    }
+                });
+
+                toggleClearSearch();
+            };
+
+            const loadIssues = async (url = form.action, pushState = true) => {
+                if (controller) {
+                    controller.abort();
+                }
+
+                const activeController = new AbortController();
+                controller = activeController;
+                const target = buildUrl(url);
+
+                setLoading(true);
+                setError();
+
+                try {
+                    const response = await fetch(target, {
+                        headers: {
+                            'Accept': 'text/html',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        signal: activeController.signal,
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Unable to load issues.');
+                    }
+
+                    results.innerHTML = await response.text();
+
+                    if (pushState) {
+                        window.history.replaceState({}, '', target);
+                    }
+                } catch (fetchError) {
+                    if (fetchError.name !== 'AbortError') {
+                        setError(fetchError.message);
+                    }
+                } finally {
+                    if (controller === activeController && !activeController.signal.aborted) {
+                        setLoading(false);
+                    }
+                }
+            };
+
+            const debouncedLoad = () => {
+                window.clearTimeout(debounceTimer);
+                debounceTimer = window.setTimeout(() => loadIssues(), 350);
+            };
+
+            form.addEventListener('submit', (event) => {
+                event.preventDefault();
+                window.clearTimeout(debounceTimer);
+                loadIssues();
+            });
+
+            searchInput.addEventListener('input', () => {
+                toggleClearSearch();
+                debouncedLoad();
+            });
+
+            form.querySelectorAll('[data-issue-filter]').forEach((filter) => {
+                filter.addEventListener('change', () => loadIssues());
+            });
+
+            clearSearchButton.addEventListener('click', () => {
+                searchInput.value = '';
+                toggleClearSearch();
+                loadIssues();
+            });
+
+            clearAllLink.addEventListener('click', (event) => {
+                event.preventDefault();
+                form.reset();
+                searchInput.value = '';
+                toggleClearSearch();
+                loadIssues(clearAllLink.href);
+            });
+
+            results.addEventListener('click', (event) => {
+                const link = event.target.closest('[data-issue-pagination] a');
+
+                if (!link) {
+                    return;
+                }
+
+                event.preventDefault();
+                syncFormFromUrl(link.href);
+                loadIssues(link.href);
+            });
+
+            toggleClearSearch();
+        });
+    </script>
+@endpush

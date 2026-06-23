@@ -20,14 +20,28 @@ class IssueController extends Controller
         $filters = $request->validate([
             'status' => ['nullable', Rule::in(Issue::STATUSES)],
             'priority' => ['nullable', Rule::in(Issue::PRIORITIES)],
-            'tag' => ['nullable', 'integer', Rule::exists('tags', 'id')],
+            'tag' => ['nullable', 'integer'],
+            'search' => ['nullable', 'string', 'max:255'],
         ]);
+
+        $tags = Tag::query()->orderBy('name')->get();
+        $tagId = isset($filters['tag']) && $tags->contains('id', (int) $filters['tag'])
+            ? (int) $filters['tag']
+            : null;
+        $search = trim($filters['search'] ?? '');
 
         $issues = Issue::query()
             ->with(['project', 'tags'])
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->when($filters['priority'] ?? null, fn ($query, $priority) => $query->where('priority', $priority))
-            ->when($filters['tag'] ?? null, fn ($query, $tagId) => $query->whereHas('tags', fn ($tagQuery) => $tagQuery->whereKey($tagId)))
+            ->when($tagId, fn ($query) => $query->whereHas('tags', fn ($tagQuery) => $tagQuery->whereKey($tagId)))
+            ->when($search !== '', function ($query) use ($search): void {
+                $query->where(function ($searchQuery) use ($search): void {
+                    $searchQuery
+                        ->where('title', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%");
+                });
+            })
             ->orderByRaw("case status when 'open' then 1 when 'in_progress' then 2 when 'closed' then 3 else 4 end")
             ->orderByRaw('case when due_date is null then 1 else 0 end')
             ->orderBy('due_date')
@@ -35,9 +49,20 @@ class IssueController extends Controller
             ->paginate(12)
             ->withQueryString();
 
+        $filters['search'] = $search;
+        $filters['tag'] = $tagId;
+
+        if ($request->ajax()) {
+            return view('issues._results', [
+                'issues' => $issues,
+                'tags' => $tags,
+                'filters' => $filters,
+            ]);
+        }
+
         return view('issues.index', [
             'issues' => $issues,
-            'tags' => Tag::query()->orderBy('name')->get(),
+            'tags' => $tags,
             'filters' => $filters,
         ]);
     }
