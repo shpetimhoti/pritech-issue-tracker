@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\CommentController;
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\IssueAssignmentController;
 use App\Http\Controllers\IssueController;
 use App\Http\Controllers\IssueTagController;
@@ -10,7 +12,16 @@ use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/projects');
 
-Route::resource('projects', ProjectController::class);
+Route::get('login', [AuthenticatedSessionController::class, 'create'])->name('login');
+Route::post('login', [AuthenticatedSessionController::class, 'store']);
+Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])->middleware('auth')->name('logout');
+Route::get('register', [RegisteredUserController::class, 'create'])->name('register');
+Route::post('register', [RegisteredUserController::class, 'store']);
+
+Route::resource('projects', ProjectController::class)
+    ->only(['create', 'store', 'edit', 'update', 'destroy'])
+    ->middleware('auth');
+Route::resource('projects', ProjectController::class)->only(['index', 'show']);
 Route::resource('issues', IssueController::class);
 
 Route::get('tags', [TagController::class, 'index'])->name('tags.index');

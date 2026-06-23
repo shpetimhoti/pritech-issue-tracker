@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -27,6 +28,7 @@ class ProjectFactory extends Factory
                 ]) . ' ' . fake()->unique()->numberBetween(100, 9999),
 
             'description' => fake()->paragraph(),
+            'user_id' => User::factory(),
             'start_date' => $startDate,
             'deadline' => $deadline,
         ];

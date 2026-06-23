@@ -26,6 +26,22 @@
                     <a href="{{ route('tags.index') }}" class="rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-950">
                         Tags
                     </a>
+                    @guest
+                        <a href="{{ route('login') }}" class="rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-950">
+                            Login
+                        </a>
+                        <a href="{{ route('register') }}" class="rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-950">
+                            Register
+                        </a>
+                    @else
+                        <span class="px-3 py-2 text-sm font-medium text-slate-600">{{ auth()->user()->name }}</span>
+                        <form action="{{ route('logout') }}" method="POST">
+                            @csrf
+                            <button type="submit" class="rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-950">
+                                Logout
+                            </button>
+                        </form>
+                    @endguest
                 </nav>
             </div>
         </header>

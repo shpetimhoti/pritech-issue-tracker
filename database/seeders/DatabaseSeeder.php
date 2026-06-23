@@ -30,7 +30,10 @@ class DatabaseSeeder extends Seeder
         $statuses = collect(Issue::STATUSES);
         $priorities = collect(Issue::PRIORITIES);
 
-        Project::factory(5)->create()->each(function (Project $project) use ($tags, $users, $statuses, $priorities): void {
+        Project::factory(5)
+            ->sequence(fn ($sequence) => ['user_id' => $users[$sequence->index % $users->count()]->id])
+            ->create()
+            ->each(function (Project $project) use ($tags, $users, $statuses, $priorities): void {
             Issue::factory(fake()->numberBetween(4, 8))
                 ->for($project)
                 ->sequence(
@@ -53,6 +56,6 @@ class DatabaseSeeder extends Seeder
                         );
                     }
                 });
-        });
+            });
     }
 }

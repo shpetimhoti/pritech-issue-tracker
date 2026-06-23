@@ -26,20 +26,28 @@
             <a href="{{ route('issues.create', ['project' => $project->id]) }}" class="inline-flex items-center justify-center rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-700">
                 New issue
             </a>
-            <a href="{{ route('projects.edit', $project) }}" class="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50">
-                Edit
-            </a>
-            <form action="{{ route('projects.destroy', $project) }}" method="POST" onsubmit="return confirm('Delete this project and its dependent issues?');">
-                @csrf
-                @method('DELETE')
-                <button type="submit" class="inline-flex items-center justify-center rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700">
-                    Delete
-                </button>
-            </form>
+            @can('update', $project)
+                <a href="{{ route('projects.edit', $project) }}" class="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50">
+                    Edit
+                </a>
+            @endcan
+            @can('delete', $project)
+                <form action="{{ route('projects.destroy', $project) }}" method="POST" onsubmit="return confirm('Delete this project and its dependent issues?');">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="inline-flex items-center justify-center rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700">
+                        Delete
+                    </button>
+                </form>
+            @endcan
         </div>
     </div>
 
-    <section class="mb-8 grid gap-4 sm:grid-cols-3">
+    <section class="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Owner</p>
+            <p class="mt-2 text-sm font-medium text-slate-950">{{ $project->owner?->name ?? 'Unassigned' }}</p>
+        </div>
         <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Start date</p>
             <p class="mt-2 text-sm font-medium text-slate-950">{{ $project->start_date?->format('M j, Y') ?? 'Not set' }}</p>

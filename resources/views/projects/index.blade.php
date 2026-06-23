@@ -7,18 +7,30 @@
             <p class="mt-2 text-sm text-slate-600">Manage active work and review issue volume by project.</p>
         </div>
 
-        <a href="{{ route('projects.create') }}" class="inline-flex items-center justify-center rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-700">
-            New project
-        </a>
+        @auth
+            <a href="{{ route('projects.create') }}" class="inline-flex items-center justify-center rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-700">
+                New project
+            </a>
+        @else
+            <a href="{{ route('login') }}" class="inline-flex items-center justify-center rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-700">
+                Login to create projects
+            </a>
+        @endauth
     </div>
 
     @if ($projects->isEmpty())
         <div class="rounded-lg border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
             <h2 class="text-lg font-semibold text-slate-950">No projects yet</h2>
             <p class="mt-2 text-sm text-slate-600">Create the first project to start organizing issues.</p>
-            <a href="{{ route('projects.create') }}" class="mt-6 inline-flex items-center justify-center rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-700">
-                New project
-            </a>
+            @auth
+                <a href="{{ route('projects.create') }}" class="mt-6 inline-flex items-center justify-center rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-700">
+                    New project
+                </a>
+            @else
+                <a href="{{ route('login') }}" class="mt-6 inline-flex items-center justify-center rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-700">
+                    Login to create projects
+                </a>
+            @endauth
         </div>
     @else
         <div class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -49,6 +61,7 @@
                                     <a href="{{ route('projects.show', $project) }}" class="font-semibold text-slate-950 hover:text-sky-700">
                                         {{ $project->name }}
                                     </a>
+                                    <p class="mt-1 text-xs text-slate-500">Owner: {{ $project->owner?->name ?? 'Unassigned' }}</p>
                                     <p class="mt-1 text-sm text-slate-600">{{ Str::limit($project->description, 130) }}</p>
                                 </td>
                                 <td class="whitespace-nowrap px-4 py-4 align-top text-sm text-slate-700">
@@ -67,14 +80,18 @@
                                 <td class="whitespace-nowrap px-4 py-4 align-top text-right text-sm">
                                     <div class="flex justify-end gap-2">
                                         <a href="{{ route('projects.show', $project) }}" class="rounded-md px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-100">View</a>
-                                        <a href="{{ route('projects.edit', $project) }}" class="rounded-md px-3 py-1.5 font-medium text-sky-700 hover:bg-sky-50">Edit</a>
-                                        <form action="{{ route('projects.destroy', $project) }}" method="POST" onsubmit="return confirm('Delete this project and its dependent issues?');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="rounded-md px-3 py-1.5 font-medium text-red-700 hover:bg-red-50">
-                                                Delete
-                                            </button>
-                                        </form>
+                                        @can('update', $project)
+                                            <a href="{{ route('projects.edit', $project) }}" class="rounded-md px-3 py-1.5 font-medium text-sky-700 hover:bg-sky-50">Edit</a>
+                                        @endcan
+                                        @can('delete', $project)
+                                            <form action="{{ route('projects.destroy', $project) }}" method="POST" onsubmit="return confirm('Delete this project and its dependent issues?');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="rounded-md px-3 py-1.5 font-medium text-red-700 hover:bg-red-50">
+                                                    Delete
+                                                </button>
+                                            </form>
+                                        @endcan
                                     </div>
                                 </td>
                             </tr>
