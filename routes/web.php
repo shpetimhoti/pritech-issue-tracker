@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CommentController;
 use App\Http\Controllers\IssueController;
 use App\Http\Controllers\IssueTagController;
 use App\Http\Controllers\ProjectController;
@@ -16,3 +17,6 @@ Route::post('tags', [TagController::class, 'store'])->name('tags.store');
 
 Route::post('issues/{issue}/tags/{tag}', [IssueTagController::class, 'store'])->name('issues.tags.attach');
 Route::delete('issues/{issue}/tags/{tag}', [IssueTagController::class, 'destroy'])->name('issues.tags.detach');
+
+Route::get('issues/{issue}/comments', [CommentController::class, 'index'])->name('issues.comments.index');
+Route::post('issues/{issue}/comments', [CommentController::class, 'store'])->name('issues.comments.store');

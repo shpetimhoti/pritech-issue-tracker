@@ -118,12 +118,69 @@
         </div>
     </section>
 
-    <section class="rounded-lg border border-dashed border-slate-300 bg-white p-6">
-        <div class="flex items-center justify-between">
+    <section
+        class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+        data-comments
+        data-index-url="{{ route('issues.comments.index', $issue) }}"
+        data-store-url="{{ route('issues.comments.store', $issue) }}"
+    >
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <h2 class="text-lg font-semibold text-slate-950">Comments</h2>
-            <span class="text-sm text-slate-500">{{ $issue->comments_count }} {{ Str::plural('comment', $issue->comments_count) }}</span>
+            <span class="text-sm text-slate-500">
+                <span data-comments-count>{{ $issue->comments_count }}</span>
+                <span data-comments-label>{{ Str::plural('comment', $issue->comments_count) }}</span>
+            </span>
         </div>
-        <p class="mt-3 text-sm text-slate-600">Comments will load here.</p>
+
+        <form data-comment-form class="mt-5 space-y-5 border-b border-slate-200 pb-6">
+            <div>
+                <label for="comment_author_name" class="block text-sm font-medium text-slate-800">Author name</label>
+                <input
+                    id="comment_author_name"
+                    name="author_name"
+                    type="text"
+                    class="mt-2 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+                    maxlength="100"
+                >
+                <p data-comment-error="author_name" class="mt-2 hidden text-sm text-red-600"></p>
+            </div>
+
+            <div>
+                <label for="comment_body" class="block text-sm font-medium text-slate-800">Comment</label>
+                <textarea
+                    id="comment_body"
+                    name="body"
+                    rows="4"
+                    class="mt-2 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+                    maxlength="2000"
+                ></textarea>
+                <p data-comment-error="body" class="mt-2 hidden text-sm text-red-600"></p>
+            </div>
+
+            <div class="flex justify-end">
+                <button
+                    type="submit"
+                    data-comment-submit
+                    class="inline-flex justify-center rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                    Add comment
+                </button>
+            </div>
+        </form>
+
+        <div data-comments-error class="mt-5 hidden rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"></div>
+        <p data-comments-loading class="mt-5 text-sm text-slate-600">Loading comments...</p>
+        <p data-comments-empty class="mt-5 hidden text-sm text-slate-600">No comments yet.</p>
+
+        <div data-comments-list class="mt-5 space-y-3"></div>
+
+        <button
+            type="button"
+            data-load-more-comments
+            class="mt-5 hidden rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+            Load more
+        </button>
     </section>
 @endsection
 
@@ -252,6 +309,201 @@
                     button.classList.remove('opacity-60');
                 }
             });
+        });
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const comments = document.querySelector('[data-comments]');
+
+            if (!comments) {
+                return;
+            }
+
+            const form = comments.querySelector('[data-comment-form]');
+            const submitButton = comments.querySelector('[data-comment-submit]');
+            const list = comments.querySelector('[data-comments-list]');
+            const loading = comments.querySelector('[data-comments-loading]');
+            const empty = comments.querySelector('[data-comments-empty]');
+            const loadMoreButton = comments.querySelector('[data-load-more-comments]');
+            const errorBox = comments.querySelector('[data-comments-error]');
+            const countValue = comments.querySelector('[data-comments-count]');
+            const countLabel = comments.querySelector('[data-comments-label]');
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            let nextPageUrl = null;
+            let isLoading = false;
+
+            const pluralizeComment = (count) => count === 1 ? 'comment' : 'comments';
+
+            const setCount = (count) => {
+                countValue.textContent = String(count);
+                countLabel.textContent = pluralizeComment(count);
+            };
+
+            const incrementCount = () => {
+                setCount(Number.parseInt(countValue.textContent, 10) + 1);
+            };
+
+            const showGeneralError = (message) => {
+                errorBox.textContent = message;
+                errorBox.classList.remove('hidden');
+            };
+
+            const clearGeneralError = () => {
+                errorBox.textContent = '';
+                errorBox.classList.add('hidden');
+            };
+
+            const setFieldError = (field, message) => {
+                const error = comments.querySelector(`[data-comment-error="${field}"]`);
+
+                if (!error) {
+                    return;
+                }
+
+                error.textContent = message;
+                error.classList.remove('hidden');
+            };
+
+            const clearFieldErrors = () => {
+                comments.querySelectorAll('[data-comment-error]').forEach((error) => {
+                    error.textContent = '';
+                    error.classList.add('hidden');
+                });
+            };
+
+            const toggleEmptyState = () => {
+                empty.classList.toggle('hidden', list.children.length > 0 || !loading.classList.contains('hidden'));
+            };
+
+            const createCommentElement = (comment) => {
+                const article = document.createElement('article');
+                article.className = 'rounded-lg border border-slate-200 bg-slate-50 p-4';
+                article.dataset.commentId = comment.id;
+
+                const header = document.createElement('div');
+                header.className = 'flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between';
+
+                const author = document.createElement('p');
+                author.className = 'text-sm font-semibold text-slate-950';
+                author.textContent = comment.author_name;
+
+                const created = document.createElement('time');
+                created.className = 'text-xs text-slate-500';
+                created.dateTime = comment.created_at || '';
+                created.textContent = comment.created_at_human || '';
+
+                const body = document.createElement('p');
+                body.className = 'mt-3 whitespace-pre-line text-sm leading-6 text-slate-700';
+                body.textContent = comment.body;
+
+                header.append(author, created);
+                article.append(header, body);
+
+                return article;
+            };
+
+            const setLoadMoreState = () => {
+                loadMoreButton.classList.toggle('hidden', !nextPageUrl);
+            };
+
+            const loadComments = async (url, append = true) => {
+                if (isLoading) {
+                    return;
+                }
+
+                isLoading = true;
+                clearGeneralError();
+                loading.classList.remove('hidden');
+                loadMoreButton.disabled = true;
+
+                try {
+                    const response = await fetch(url, {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.message || 'Unable to load comments.');
+                    }
+
+                    if (!append) {
+                        list.replaceChildren();
+                    }
+
+                    data.data.forEach((comment) => {
+                        list.appendChild(createCommentElement(comment));
+                    });
+
+                    nextPageUrl = data.links.next;
+                    setCount(data.meta.total);
+                } catch (error) {
+                    showGeneralError(error.message);
+                } finally {
+                    isLoading = false;
+                    loading.classList.add('hidden');
+                    loadMoreButton.disabled = false;
+                    setLoadMoreState();
+                    toggleEmptyState();
+                }
+            };
+
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+
+                clearGeneralError();
+                clearFieldErrors();
+                submitButton.disabled = true;
+
+                const formData = new FormData(form);
+
+                try {
+                    const response = await fetch(comments.dataset.storeUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: formData,
+                    });
+
+                    const data = await response.json();
+
+                    if (response.status === 422) {
+                        Object.entries(data.errors || {}).forEach(([field, messages]) => {
+                            setFieldError(field, messages[0]);
+                        });
+
+                        return;
+                    }
+
+                    if (!response.ok) {
+                        throw new Error(data.message || 'Unable to add comment.');
+                    }
+
+                    list.prepend(createCommentElement(data.comment));
+                    form.reset();
+                    incrementCount();
+                    toggleEmptyState();
+                } catch (error) {
+                    showGeneralError(error.message);
+                } finally {
+                    submitButton.disabled = false;
+                }
+            });
+
+            loadMoreButton.addEventListener('click', () => {
+                if (nextPageUrl) {
+                    loadComments(nextPageUrl);
+                }
+            });
+
+            loadComments(comments.dataset.indexUrl, false);
         });
     </script>
 @endpush
