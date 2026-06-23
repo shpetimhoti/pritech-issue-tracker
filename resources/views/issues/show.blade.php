@@ -86,6 +86,8 @@
                         &times;
                     </button>
                 </span>
+                @empty
+                    <p>No tags attached.</p>
             @endforelse
             </div>
         </div>
@@ -112,6 +114,72 @@
                         <span class="h-2.5 w-2.5 rounded-full" style="background-color: {{ $tag->color ?? '#64748b' }}"></span>
                         <span>{{ $tag->name }}</span>
                         <span class="text-sky-700">Add</span>
+                    </button>
+                @endforeach
+            </div>
+        </div>
+    </section>
+
+    <section class="mb-8 rounded-lg border border-slate-200 bg-white p-6 shadow-sm" data-issue-members>
+        <div>
+            <h2 class="text-lg font-semibold text-slate-950">Members</h2>
+            <p class="mt-1 text-sm text-slate-600">Assign or remove users without leaving this page.</p>
+        </div>
+
+        <div data-member-error class="mt-4 hidden rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"></div>
+
+        <div class="mt-5">
+            <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Assigned members</h3>
+            <div data-assigned-members class="mt-3 flex flex-col gap-2">
+                <p data-empty-assigned-members class="{{ $issue->users->isEmpty() ? '' : 'hidden' }} text-sm text-slate-600">No members are assigned to this issue.</p>
+                @foreach ($issue->users as $user)
+                    <div data-assigned-member data-user-id="{{ $user->id }}" class="flex flex-col gap-3 rounded-md bg-slate-100 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-slate-800">{{ $user->name }}</p>
+                            <p class="text-xs text-slate-500">{{ $user->email }}</p>
+                        </div>
+                        <button
+                            type="button"
+                            data-member-action="detach"
+                            data-url="{{ route('issues.members.detach', [$issue, $user]) }}"
+                            data-attach-url="{{ route('issues.members.attach', [$issue, $user]) }}"
+                            data-user-name="{{ $user->name }}"
+                            data-user-email="{{ $user->email }}"
+                            class="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                            aria-label="Remove {{ $user->name }} from issue"
+                        >
+                            Remove
+                        </button>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
+        <div class="mt-6 border-t border-slate-200 pt-5">
+            <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Available users</h3>
+            <div data-available-members class="mt-3 flex flex-col gap-2">
+                @php
+                    $availableUsers = $availableUsers ?? collect();
+                @endphp
+
+                <p data-empty-available-members class="{{ $availableUsers->isEmpty() ? '' : 'hidden' }} text-sm text-slate-600">All users are assigned to this issue.</p>
+                @foreach ($availableUsers as $user)
+                    <button
+                        type="button"
+                        data-member-action="attach"
+                        data-user-id="{{ $user->id }}"
+                        data-url="{{ route('issues.members.attach', [$issue, $user]) }}"
+                        data-detach-url="{{ route('issues.members.detach', [$issue, $user]) }}"
+                        data-user-name="{{ $user->name }}"
+                        data-user-email="{{ $user->email }}"
+                        class="flex flex-col gap-1 rounded-md border border-slate-200 bg-white px-3 py-2 text-left hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-row sm:items-center sm:justify-between"
+                        aria-label="Assign {{ $user->name }} to issue"
+                    >
+                        <span>
+                            <span class="block text-sm font-medium text-slate-800">{{ $user->name }}</span>
+                            <span class="block text-xs text-slate-500">{{ $user->email }}</span>
+                        </span>
+                        <span class="text-sm font-medium text-sky-700">Add</span>
                     </button>
                 @endforeach
             </div>
@@ -225,17 +293,25 @@
                 wrapper.dataset.attachedTag = '';
                 wrapper.dataset.tagId = tag.id;
                 wrapper.className = 'inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700';
-                wrapper.innerHTML = `
-                    <span class="h-2.5 w-2.5 rounded-full" style="background-color: ${tagColor(tag)}"></span>
-                    <span></span>
-                    <button type="button" data-tag-action="detach" data-url="${detachUrl}" class="ml-1 rounded-full px-1 text-slate-500 hover:bg-slate-200 hover:text-slate-900"></button>
-                `;
-                wrapper.querySelector('span:nth-child(2)').textContent = tag.name;
-                const button = wrapper.querySelector('button');
+
+                const swatch = document.createElement('span');
+                swatch.className = 'h-2.5 w-2.5 rounded-full';
+                swatch.style.backgroundColor = tagColor(tag);
+
+                const name = document.createElement('span');
+                name.textContent = tag.name;
+
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.dataset.tagAction = 'detach';
+                button.dataset.url = detachUrl;
                 button.dataset.tagName = tag.name;
                 button.dataset.tagColor = tag.color || '';
+                button.className = 'ml-1 rounded-full px-1 text-slate-500 hover:bg-slate-200 hover:text-slate-900';
                 button.setAttribute('aria-label', `Remove ${tag.name} tag`);
-                button.innerHTML = '&times;';
+                button.textContent = String.fromCharCode(215);
+
+                wrapper.append(swatch, name, button);
 
                 return wrapper;
             };
@@ -250,12 +326,19 @@
                 button.dataset.tagColor = tag.color || '';
                 button.className = 'inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50';
                 button.setAttribute('aria-label', `Attach ${tag.name} tag`);
-                button.innerHTML = `
-                    <span class="h-2.5 w-2.5 rounded-full" style="background-color: ${tagColor(tag)}"></span>
-                    <span></span>
-                    <span class="text-sky-700">Add</span>
-                `;
-                button.querySelector('span:nth-child(2)').textContent = tag.name;
+
+                const swatch = document.createElement('span');
+                swatch.className = 'h-2.5 w-2.5 rounded-full';
+                swatch.style.backgroundColor = tagColor(tag);
+
+                const name = document.createElement('span');
+                name.textContent = tag.name;
+
+                const action = document.createElement('span');
+                action.className = 'text-sky-700';
+                action.textContent = 'Add';
+
+                button.append(swatch, name, action);
 
                 return button;
             };
@@ -307,6 +390,154 @@
                     showError(error.message);
                     button.disabled = false;
                     button.classList.remove('opacity-60');
+                }
+            });
+        });
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const manager = document.querySelector('[data-issue-members]');
+
+            if (!manager) {
+                return;
+            }
+
+            const assignedList = manager.querySelector('[data-assigned-members]');
+            const availableList = manager.querySelector('[data-available-members]');
+            const assignedEmpty = manager.querySelector('[data-empty-assigned-members]');
+            const availableEmpty = manager.querySelector('[data-empty-available-members]');
+            const errorBox = manager.querySelector('[data-member-error]');
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+            const showError = (message) => {
+                errorBox.textContent = message;
+                errorBox.classList.remove('hidden');
+            };
+
+            const clearError = () => {
+                errorBox.textContent = '';
+                errorBox.classList.add('hidden');
+            };
+
+            const toggleEmptyStates = () => {
+                const assignedCount = assignedList.querySelectorAll('[data-assigned-member]').length;
+                const availableCount = availableList.querySelectorAll('[data-member-action="attach"]').length;
+
+                assignedEmpty.classList.toggle('hidden', assignedCount > 0);
+                availableEmpty.classList.toggle('hidden', availableCount > 0);
+            };
+
+            const createAssignedMember = (user) => {
+                const wrapper = document.createElement('div');
+                wrapper.dataset.assignedMember = '';
+                wrapper.dataset.userId = user.id;
+                wrapper.className = 'flex flex-col gap-3 rounded-md bg-slate-100 px-3 py-2 sm:flex-row sm:items-center sm:justify-between';
+
+                const details = document.createElement('div');
+
+                const name = document.createElement('p');
+                name.className = 'text-sm font-medium text-slate-800';
+                name.textContent = user.name;
+
+                const email = document.createElement('p');
+                email.className = 'text-xs text-slate-500';
+                email.textContent = user.email;
+
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.dataset.memberAction = 'detach';
+                button.dataset.url = user.detach_url;
+                button.dataset.attachUrl = user.attach_url;
+                button.dataset.userName = user.name;
+                button.dataset.userEmail = user.email;
+                button.className = 'inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60';
+                button.setAttribute('aria-label', `Remove ${user.name} from issue`);
+                button.textContent = 'Remove';
+
+                details.append(name, email);
+                wrapper.append(details, button);
+
+                return wrapper;
+            };
+
+            const createAvailableMember = (user) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.dataset.memberAction = 'attach';
+                button.dataset.userId = user.id;
+                button.dataset.url = user.attach_url;
+                button.dataset.detachUrl = user.detach_url;
+                button.dataset.userName = user.name;
+                button.dataset.userEmail = user.email;
+                button.className = 'flex flex-col gap-1 rounded-md border border-slate-200 bg-white px-3 py-2 text-left hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-row sm:items-center sm:justify-between';
+                button.setAttribute('aria-label', `Assign ${user.name} to issue`);
+
+                const details = document.createElement('span');
+
+                const name = document.createElement('span');
+                name.className = 'block text-sm font-medium text-slate-800';
+                name.textContent = user.name;
+
+                const email = document.createElement('span');
+                email.className = 'block text-xs text-slate-500';
+                email.textContent = user.email;
+
+                const action = document.createElement('span');
+                action.className = 'text-sm font-medium text-sky-700';
+                action.textContent = 'Add';
+
+                details.append(name, email);
+                button.append(details, action);
+
+                return button;
+            };
+
+            manager.addEventListener('click', async (event) => {
+                const button = event.target.closest('[data-member-action]');
+
+                if (!button || !manager.contains(button)) {
+                    return;
+                }
+
+                clearError();
+                button.disabled = true;
+
+                const action = button.dataset.memberAction;
+                const method = action === 'attach' ? 'POST' : 'DELETE';
+
+                try {
+                    const response = await fetch(button.dataset.url, {
+                        method,
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        const message = data.message || Object.values(data.errors || {}).flat().join(' ') || 'Unable to update members.';
+                        throw new Error(message);
+                    }
+
+                    const user = data.user;
+
+                    if (action === 'attach') {
+                        assignedList.appendChild(createAssignedMember(user));
+                        button.remove();
+                    } else {
+                        availableList.appendChild(createAvailableMember(user));
+                        button.closest('[data-assigned-member]').remove();
+                    }
+
+                    toggleEmptyStates();
+                } catch (error) {
+                    showError(error.message);
+                    button.disabled = false;
                 }
             });
         });
