@@ -33,7 +33,71 @@
             @endauth
         </div>
     @else
-        <div class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div class="space-y-4 md:hidden">
+            @foreach ($projects as $project)
+                @php
+                    $deadlineStatus = 'No deadline';
+                    $deadlineClass = 'bg-slate-100 text-slate-700';
+
+                    if ($project->deadline) {
+                        $deadlineStatus = $project->deadline->isPast() && ! $project->deadline->isToday() ? 'Overdue' : 'Scheduled';
+                        $deadlineClass = $deadlineStatus === 'Overdue' ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700';
+                    }
+                @endphp
+                <article class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <a href="{{ route('projects.show', $project) }}" class="text-base font-semibold text-slate-950 hover:text-sky-700">
+                                {{ $project->name }}
+                            </a>
+                            <p class="mt-1 text-xs text-slate-500">Owner: {{ $project->owner?->name ?? 'Unassigned' }}</p>
+                        </div>
+                        <span class="shrink-0 rounded-full px-2.5 py-1 text-xs font-medium {{ $deadlineClass }}">
+                            {{ $deadlineStatus }}
+                        </span>
+                    </div>
+
+                    <p class="mt-3 text-sm leading-6 text-slate-600">{{ Str::limit($project->description, 150) }}</p>
+
+                    <dl class="mt-4 grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                            <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Start</dt>
+                            <dd class="mt-1 text-slate-800">{{ $project->start_date?->format('M j, Y') ?? 'Not set' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Deadline</dt>
+                            <dd class="mt-1 text-slate-800">{{ $project->deadline?->format('M j, Y') ?? 'Not set' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Issues</dt>
+                            <dd class="mt-1 text-slate-800">{{ $project->issues_count }} {{ Str::plural('issue', $project->issues_count) }}</dd>
+                        </div>
+                    </dl>
+
+                    <div class="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-200 pt-4">
+                        <a href="{{ route('projects.show', $project) }}" class="inline-flex justify-center rounded-md bg-sky-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-700">
+                            View project
+                        </a>
+                        @can('update', $project)
+                            <a href="{{ route('projects.edit', $project) }}" class="inline-flex justify-center rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-sky-700 shadow-sm hover:bg-sky-50">
+                                Edit
+                            </a>
+                        @endcan
+                        @can('delete', $project)
+                            <form action="{{ route('projects.destroy', $project) }}" method="POST" onsubmit="return confirm('Delete this project and its dependent issues?');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="inline-flex justify-center rounded-md border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-700 shadow-sm hover:bg-red-50">
+                                    Delete
+                                </button>
+                            </form>
+                        @endcan
+                    </div>
+                </article>
+            @endforeach
+        </div>
+
+        <div class="hidden overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm md:block">
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-slate-200">
                     <thead class="bg-slate-50">
