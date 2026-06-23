@@ -75,7 +75,13 @@ class IssueController extends Controller
         $issue->load(['project', 'tags']);
         $issue->loadCount('comments');
 
-        return view('issues.show', ['issue' => $issue]);
+        return view('issues.show', [
+            'issue' => $issue,
+            'availableTags' => Tag::query()
+                ->whereNotIn('id', $issue->tags->pluck('id'))
+                ->orderBy('name')
+                ->get(),
+        ]);
     }
 
     public function edit(Issue $issue): View
