@@ -5,8 +5,8 @@ namespace Tests\Feature;
 use App\Models\Issue;
 use App\Models\Project;
 use App\Models\Tag;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class TagManagementTest extends TestCase
@@ -70,7 +70,9 @@ class TagManagementTest extends TestCase
         $response
             ->assertOk()
             ->assertJsonPath('tag.id', $tag->id)
-            ->assertJsonPath('tag.attached', true);
+            ->assertJsonPath('tag.attached', true)
+            ->assertJsonPath('tag.attach_url', route('issues.tags.attach', [$issue, $tag]))
+            ->assertJsonPath('tag.detach_url', route('issues.tags.detach', [$issue, $tag]));
 
         $this->assertDatabaseHas('issue_tag', [
             'issue_id' => $issue->id,
@@ -100,7 +102,9 @@ class TagManagementTest extends TestCase
         $response
             ->assertOk()
             ->assertJsonPath('tag.id', $tag->id)
-            ->assertJsonPath('tag.attached', false);
+            ->assertJsonPath('tag.attached', false)
+            ->assertJsonPath('tag.attach_url', route('issues.tags.attach', [$issue, $tag]))
+            ->assertJsonPath('tag.detach_url', route('issues.tags.detach', [$issue, $tag]));
 
         $this->assertDatabaseMissing('issue_tag', [
             'issue_id' => $issue->id,

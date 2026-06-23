@@ -18,7 +18,7 @@ class TagFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => fake()->unique()->randomElement([
+            'name' => fake()->randomElement([
                 'bug',
                 'feature',
                 'backend',
@@ -29,7 +29,7 @@ class TagFactory extends Factory
                 'security',
                 'qa',
                 'support',
-            ]),
+            ]).'-'.fake()->unique()->numberBetween(1000, 999999),
             'color' => fake()->hexColor(),
         ];
     }

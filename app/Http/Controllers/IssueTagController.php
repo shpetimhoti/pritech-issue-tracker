@@ -13,7 +13,7 @@ class IssueTagController extends Controller
         if ($issue->tags()->whereKey($tag->id)->exists()) {
             return response()->json([
                 'message' => 'Tag is already attached to this issue.',
-                'tag' => $this->tagPayload($tag, true),
+                'tag' => $this->tagPayload($issue, $tag, true),
             ], 409);
         }
 
@@ -21,7 +21,7 @@ class IssueTagController extends Controller
 
         return response()->json([
             'message' => 'Tag attached successfully.',
-            'tag' => $this->tagPayload($tag, true),
+            'tag' => $this->tagPayload($issue, $tag, true),
         ]);
     }
 
@@ -31,20 +31,22 @@ class IssueTagController extends Controller
 
         return response()->json([
             'message' => 'Tag detached successfully.',
-            'tag' => $this->tagPayload($tag, false),
+            'tag' => $this->tagPayload($issue, $tag, false),
         ]);
     }
 
     /**
-     * @return array{id: int, name: string, color: string|null, attached: bool}
+     * @return array{id: int, name: string, color: string|null, attached: bool, attach_url: string, detach_url: string}
      */
-    private function tagPayload(Tag $tag, bool $attached): array
+    private function tagPayload(Issue $issue, Tag $tag, bool $attached): array
     {
         return [
             'id' => $tag->id,
             'name' => $tag->name,
             'color' => $tag->color,
             'attached' => $attached,
+            'attach_url' => route('issues.tags.attach', [$issue, $tag]),
+            'detach_url' => route('issues.tags.detach', [$issue, $tag]),
         ];
     }
 }

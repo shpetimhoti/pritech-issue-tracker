@@ -378,10 +378,10 @@
                     const tag = data.tag;
 
                     if (action === 'attach') {
-                        attachedList.appendChild(createAttachedTag(tag, button.dataset.url));
+                        attachedList.appendChild(createAttachedTag(tag, tag.detach_url));
                         button.remove();
                     } else {
-                        availableList.appendChild(createAvailableTag(tag, button.dataset.url));
+                        availableList.appendChild(createAvailableTag(tag, tag.attach_url));
                         button.closest('[data-attached-tag]').remove();
                     }
 
