@@ -208,7 +208,7 @@ http://127.0.0.1:8000
 A demo user is created by the database seeder.
 
 ```text
-Email: owner@example.com
+Email: test@example.com
 Password: password
 ```
 
